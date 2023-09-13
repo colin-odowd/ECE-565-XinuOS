@@ -11,7 +11,7 @@ syscall	kill(
 	)
 {
 	#ifdef DEBUG
-		kprintf("Killing process %d\n...", pid);
+		kprintf("Killing Process %d\n", pid);
 	#endif
 
 	intmask	mask;			/* Saved interrupt mask		*/
