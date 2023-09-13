@@ -1,0 +1,59 @@
+#include <xinu.h>
+
+#define CHILD_PROCESSES 15
+
+process child_process()
+{
+    while(1)
+    {
+        sleepms(1);
+    }
+}
+
+void print_processes()
+{
+    int32 i;
+
+    for (i = 0; i < NPROC; i++) {
+
+        if (proctab[i].prstate != PR_FREE)
+        {
+            kprintf("Parent: %d, Children: ", )            
+            for (int j = 0; j < NPROC; j++) 
+            {   
+                if (proctab[j].prptr == i)
+                {
+                    kprintf("%d ", j);
+                }
+            }
+            kprintf("\n");
+        }
+    }
+}
+
+
+process	test_main(void)
+{
+    int32 i;
+
+    for (i = 0; i < CHILD_PROCESSES; i++)
+    {
+        kprintf("Creating Child Process %d\n...", i);
+        pid = create((void *)child_process, 1024, 50, "child_process", 0);
+        resume(pid);
+    }
+
+    /* Print active processes before termination */
+    print_processes();
+
+    /* Kill starting process (main) */
+    kill(0);
+
+    /* Print active processes after termination */
+    print_processes();
+}
+
+shellcmd xsh_termination(int nargs, char *args[]) {
+    test_main();
+    return 0;
+}
