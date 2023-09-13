@@ -10,15 +10,30 @@ syscall	kill(
 	  pid32		pid		/* ID of process to kill	*/
 	)
 {
+	#ifdef DEBUG
+		kprintf("Killing process %d\n...", pid);
+	#endif
+
 	intmask	mask;			/* Saved interrupt mask		*/
 	struct	procent *prptr;		/* Ptr to process's table entry	*/
 	int32	i;			/* Index into descriptors	*/
+	int32   pid_index;
 
 	mask = disable();
 	if (isbadpid(pid) || (pid == NULLPROC)
 	    || ((prptr = &proctab[pid])->prstate) == PR_FREE) {
 		restore(mask);
 		return SYSERR;
+	}
+
+	for (pid_index = 0; pid_index < NPROC; pid_index++)
+	{
+		if ((proctab[pid_index].prparent == pid) &&
+			(proctab[pid_index].user_process == TRUE))
+		{
+			/* This works because PID is increment by ++ in create.c */
+			kill(pid_index);
+		}
 	}
 
 	if (--prcount <= 1) {		/* Last user process completes	*/
@@ -53,7 +68,7 @@ syscall	kill(
 	default:
 		prptr->prstate = PR_FREE;
 	}
-
+	
 	restore(mask);
 	return OK;
 }

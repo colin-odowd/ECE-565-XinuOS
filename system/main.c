@@ -18,7 +18,7 @@ process	main(void)
 	resume(shpid = create(shell, 8192, 50, "shell", 1, CONSOLE));
 
 	/* Wait for shell to exit and recreate it */
-
+		
 	while (TRUE) {
 	    if (receive() == shpid) {
 		sleepms(200);
