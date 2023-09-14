@@ -26,13 +26,15 @@ syscall	kill(
 		return SYSERR;
 	}
 
-	for (pid_index = 0; pid_index < NPROC; pid_index++)
+	if (proctab[pid].user_process == TRUE)
 	{
-		if ((proctab[pid_index].prparent == pid) &&
-			(proctab[pid_index].user_process == TRUE))
+		for (i = 0; i < NPROC; i++)
 		{
-			/* This works because PID is increment by ++ in create.c */
-			kill(pid_index);
+			if (proctab[i].prparent == pid) 
+			{
+				/* This works because PID is increment by ++ in create.c */
+				kill(i);
+			}
 		}
 	}
 
