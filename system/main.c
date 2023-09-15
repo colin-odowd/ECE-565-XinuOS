@@ -2,7 +2,10 @@
 
 #include <xinu.h>
 
-#define CHILD_PROCESSES 15
+#define TESTCASE1
+#define TESTCASE2
+
+#define CHILD_PROCESSES 5
 #define CREATION_LOOP 3
 
 void run_forever()
@@ -18,9 +21,10 @@ process child_process()
     int32 i;
     int32 child_pid;
 
+    kprintf("Creating Children From PID: %d\n", getpid());
     for (i = 0; i < CREATION_LOOP; i++)
     {
-        child_pid = create((void *)run_forever, 1024, 50, "child_process", 0);
+        child_pid = create((void *)run_forever, 1024, INITPRIO, "child_process", 0);
         proctab[child_pid].user_process = TRUE;
         resume(child_pid);
     }
@@ -55,29 +59,49 @@ void print_processes()
 process	main(void)
 {
     int32 i;
-    pid32 child_pid;
 	pid32 main_pid;
+    pri16 main_prio;
+    pid32 child_pids[CHILD_PROCESSES + 1];
 
 	printf("\n\n");
 
+    main_pid = getpid();
+    main_prio = proctab[main_pid].prprio; 
+
     for (i = 0; i <= CHILD_PROCESSES; i++)
     {
-        child_pid = create((void *)child_process, 1024, 50, "child_process", 0);
-        proctab[child_pid].user_process = TRUE;
-        resume(child_pid);
+        kprintf("Creating Children From Main \n");
+        child_pids[i] = create((void *)child_process, 1024, main_prio+1, "child_process", 0);
+        proctab[child_pids[i]].user_process = TRUE;
     }
 
-    sleepms(1000);
+    for (i = 0; i <= CHILD_PROCESSES; i++)
+    {
+        resume(child_pids[i]);
+    }
 
     /* Print active processes before termination */
     print_processes();
 
-    /* Kill first user process after main */
-	main_pid = getpid();
-    kill(main_pid+1);
+#ifdef TESTCASE1
+    /* Kill first child processes of main */
+    kill(child_pids[0]);
 
     /* Print active processes after termination */
     print_processes();
+
+    sleepms(1000);
+#endif
+
+#ifdef TESTCASE2
+    /* Kill third child processes of main */
+    kill(child_pids[3]);
+
+    /* Print active processes after termination */
+    print_processes();
+
+    sleepms(1000);
+#endif
 
     return OK;
 }
