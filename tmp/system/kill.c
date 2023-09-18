@@ -10,14 +10,13 @@ syscall	kill(
 	  pid32		pid		/* ID of process to kill	*/
 	)
 {
-	#ifdef DEBUG
+	#if (DEBUG)
 		kprintf("Killing Process %d\n", pid);
 	#endif
 
 	intmask	mask;			/* Saved interrupt mask		*/
 	struct	procent *prptr;		/* Ptr to process's table entry	*/
 	int32	i;			/* Index into descriptors	*/
-	int32   pid_index;
 
 	mask = disable();
 	if (isbadpid(pid) || (pid == NULLPROC)
