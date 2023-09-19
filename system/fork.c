@@ -2,8 +2,6 @@
 
 #include <xinu.h>
 
-local uint32 get_eip();
-local void printstack(pid32 pid);
 
 #define MAIN_PID 4
 
@@ -13,6 +11,8 @@ local void printstack(pid32 pid);
  */
 pid32 fork()
 {
+	uint32 		*ebp;
+	uint32 		ecx, edx, ebx, esi, edi;
 	uint32		savsp, *pushsp;
 	intmask 	mask;    	 /* Interrupt mask		*/
 	pid32		pid;		 /* Stores new process id	*/
@@ -20,12 +20,19 @@ pid32 fork()
 	struct	    procent	*prptr;		/* Pointer to proc. table entry */
     struct	    procent *parent_prptr; /* Pointer to parent process in PCB */
 	uint32 		*parent_ptr;
-	uint32 		register_val;
 	int32		i;
 	uint32		*saddr;		/* Stack address		*/
 	uint32 		*frame_pointer; 
 
+	asm("movl %%ebp, %0" : "=r"(ebp));
+	asm("movl %%ecx, %0" : "=r"(ecx));
+	asm("movl %%edx, %0" : "=r"(edx));
+	asm("movl %%ebx, %0" : "=r"(ebx));
+	asm("movl %%esi, %0" : "=r"(esi));
+	asm("movl %%edi, %0" : "=r"(edi));
+
 	parent_pid = getpid();
+	parent_prptr = &proctab[parent_pid];
 
 	mask = disable();
 	
@@ -66,82 +73,48 @@ pid32 fork()
 	frame_pointer =  parent_ptr;
 	savsp = (uint32) saddr;
 
-	asm("movl %%ebp, %0" : "=r"(register_val));
-
-	/* This copies the parent stack up until the final stack frame  */
-	while (parent_ptr > register_val)
+	/* This copies the parent stack up until to the frame pointer of the first frame stack */   
+	while ((uint32)parent_ptr > *ebp)
 	{
-		/* When the dereference of pointer equals frame pointer address, EBP pointer found */
+		/* When the dereference parent stack pointer equals a frame pointer address, make new frame pointers */
 		while ((*parent_ptr) != (uint32)frame_pointer)
 		{
 			*saddr = *parent_ptr;
 			--saddr;
 			--parent_ptr;
 		}
-		*saddr = savsp; 			 /* Save child frame base pointer instead of parent */
-		savsp = (uint32) saddr;		 /* Update child frame base pointer address */
+		*saddr = savsp; 			 /* Save child frame pointer instead of parent */
+		savsp = (uint32) saddr;		 /* Update child frame pointer address */
 		frame_pointer = parent_ptr;	 /* Update the frame pointer address we are looking for */
 		--saddr;					
 		--parent_ptr;
 	}	
 
-	/* Set function return address to the ESI and then return to top of stack */
-	register_val = get_eip();
-	*saddr = register_val;
-	*--saddr = savsp;
+	while (parent_ptr > ebp)
+	{
+		*saddr = *parent_ptr;
+		--saddr;
+		--parent_ptr;
+	}
+
+	*saddr = savsp;
 
 	savsp = (uint32) saddr;		/* Start of frame for ctxsw	*/
 	*--saddr = 0x00000200;		/* New process runs with	*/
 								/* interrupts enabled		*/
 
-	*--saddr = NPROC;					/* %eax */
-	asm("movl %%ecx, %0" : "=r"(register_val));
-	*--saddr = register_val;			/* %ecx */
-	asm("movl %%edx, %0" : "=r"(register_val));
-	*--saddr = register_val;			/* %edx */
-	asm("movl %%ebx, %0" : "=r"(register_val));
-	*--saddr = register_val;			/* %ebx */
+	*--saddr = NPROC;		/* %eax */
+	*--saddr = ecx;			/* %ecx */
+	*--saddr = edx;			/* %edx */
+	*--saddr = ebx;			/* %ebx */
 	*--saddr = 0;			/* %esp; value filled in below	*/
 	pushsp = saddr;			/* Remember this location	*/
 	*--saddr = savsp;		/* %ebp (while finishing ctxsw)	*/
-	asm("movl %%esi, %0" : "=r"(register_val));
-	*--saddr = register_val;			/* %esi */
-	asm("movl %%edi, %0" : "=r"(register_val));
-	*--saddr = register_val;			/* %edi */
+	*--saddr = esi;			/* %esi */
+	*--saddr = edi;			/* %edi */
 	*pushsp = (unsigned long) (prptr->prstkptr = (char *)saddr);
 
 	insert(pid, readylist, prptr->prprio);
 	restore(mask);
 	return(pid);
 }
-
-uint32 get_eip() 
-{
-    uint32 eip_val;
-    __asm__ volatile(
-        "movl (%%esp), %%eax\n\t"
-        "movl %%eax, %0"
-        : "=r"(eip_val)  
-        :
-        : "%eax"         
-    );
-    return eip_val;
-}
-
-void printstack(pid32 pid)
-{
-	unsigned long *p = (unsigned long *)proctab[pid].prstkbase;
-	unsigned long   *esp, *ebp;
-
-	asm("movl %%esp, %0\n" :"=r"(esp));
-	asm("movl %%ebp, %0\n" :"=r"(ebp));
-
-	kprintf("stackbase = 0x%08x\n",p);
-	kprintf("ESP=0x%08x, EBP=0x%08x\n", esp, ebp);
-	kprintf("ADDRESS\t\tVALUE\n");
-
-	while(p >= esp){
-		kprintf("0x%08x\t0x%08x\n", p, *p);
-		p--;
-	}
-} 
