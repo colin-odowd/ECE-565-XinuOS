@@ -34,6 +34,12 @@ pid32 fork()
 	parent_pid = getpid();
 	parent_prptr = &proctab[parent_pid];
 
+	/* Visualize the stack of the parent. Remember that this */
+	/* includes a stack frame for stacktrace() function call */
+	//kprintf("\n\nParent Stacktrace: \n");
+	//stacktrace(parent_pid);
+	//kprintf("\n\n\n");
+
 	mask = disable();
 	
 	if (((pid=newpid()) == SYSERR) ||
@@ -113,6 +119,11 @@ pid32 fork()
 	*--saddr = esi;			/* %esi */
 	*--saddr = edi;			/* %edi */
 	*pushsp = (unsigned long) (prptr->prstkptr = (char *)saddr);
+
+	/* Visualize the stack of the child */
+	// kprintf("\n\nChild Stacktrace: \n");
+	// stacktrace(pid);
+	// kprintf("\n\n\n");
 
 	insert(pid, readylist, prptr->prprio);
 	restore(mask);
