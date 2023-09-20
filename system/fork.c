@@ -47,7 +47,7 @@ pid32 fork()
 	prptr = &proctab[pid];
 
 	/* Initialize process table entry for new process */
-	prptr->prstate = PR_READY;	/* Initial state is suspended	*/
+	prptr->prstate = PR_READY;	
 	prptr->prprio = parent_prptr->prprio;
 	prptr->prstkbase = (char *)saddr;
 	prptr->prstklen = parent_prptr->prstklen;
